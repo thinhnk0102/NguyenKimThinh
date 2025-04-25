@@ -13,7 +13,7 @@ import Project5 from '../ThucHanh/Lab1/Project5';
 import Project6 from '../ThucHanh/Lab1/Project6';
 import Project7 from '../ThucHanh/Lab1/Project7';
 import Project8 from '../ThucHanh/Lab1/Project8';
-
+import ContactsNavigator from "./Lab2/routes"
 const Stack = createNativeStackNavigator();
 
 // Danh sách project với tên, component và màu sắc tương ứng
@@ -58,7 +58,9 @@ const HomeScreen = ({ navigation }) => {
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Home" screenOptions={{ headerTitleAlign: 'center' }}>
+      <Stack.Navigator  initialRouteName="Home_lab2" screenOptions={{ headerTitleAlign: 'center' }}>
+        {/* <Stack.Screen name="Contacts" component={Contacts} options={{ title: 'Contacts' }} /> */}
+        <Stack.Screen name="Home_lab2" component={ContactsNavigator} options={{headerShown: false}} />
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Trang Chủ' }} />
         <Stack.Screen name="Project1" component={Project1} options={{ title: 'Hello, Word!' }} />
         <Stack.Screen name="Project2" component={Project2} options={{ title: 'Capturing Taps' }} />
