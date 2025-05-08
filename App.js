@@ -13,7 +13,13 @@ import Project5 from '../ThucHanh/Lab1/Project5';
 import Project6 from '../ThucHanh/Lab1/Project6';
 import Project7 from '../ThucHanh/Lab1/Project7';
 import Project8 from '../ThucHanh/Lab1/Project8';
-import ContactsNavigator from "./Lab2/routes"
+import ContactsNavigator from "./Lab2/routes";
+import LoginScreen from "./Lab3/LoginScreen";
+import RegisterScreen from "./Lab3/RegisterScreen";
+import HomeLab3 from "./Lab3/HomeLab3";
+import AddService from "./Lab3/AddService";
+import ServiceDetail from "./Lab3/ServiceDetail";
+import EditService from "./Lab3/EditService";
 const Stack = createNativeStackNavigator();
 
 // Danh sách project với tên, component và màu sắc tương ứng
@@ -58,9 +64,15 @@ const HomeScreen = ({ navigation }) => {
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator  initialRouteName="Home_lab2" screenOptions={{ headerTitleAlign: 'center' }}>
+      <Stack.Navigator  initialRouteName="LoginScreen" screenOptions={{ headerTitleAlign: 'center' }}>
         {/* <Stack.Screen name="Contacts" component={Contacts} options={{ title: 'Contacts' }} /> */}
         <Stack.Screen name="Home_lab2" component={ContactsNavigator} options={{headerShown: false}} />
+        <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ title: 'Login' }} />
+        <Stack.Screen name="Register"component={RegisterScreen} options={{ title: "Register" }}/>
+        <Stack.Screen name="HomeLab3" component={HomeLab3} options={{headerShown: false}}  />
+        <Stack.Screen name="AddService" component={AddService} options={{ title: "Service" }} />
+        <Stack.Screen name="ServiceDetail" component={ServiceDetail} options={{ title: "Service detail" }} />
+        <Stack.Screen name="EditService" component={EditService} options={{ title: "Service" }} />
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Trang Chủ' }} />
         <Stack.Screen name="Project1" component={Project1} options={{ title: 'Hello, Word!' }} />
         <Stack.Screen name="Project2" component={Project2} options={{ title: 'Capturing Taps' }} />
