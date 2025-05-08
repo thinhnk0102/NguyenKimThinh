@@ -22,6 +22,7 @@ import ServiceDetail from "./Lab3/ServiceDetail";
 import EditService from "./Lab3/EditService";
 const Stack = createNativeStackNavigator();
 import Calculator from "./Lab1/Caculator";
+import TodoApp from "./Lab5/TodoApp";
 
 // Danh sách project với tên, component và màu sắc tương ứng
 const projects = [
@@ -65,8 +66,9 @@ const HomeScreen = ({ navigation }) => {
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator  initialRouteName="Calculator" screenOptions={{ headerTitleAlign: 'center' }}>
+      <Stack.Navigator  initialRouteName="TodoApp" screenOptions={{ headerTitleAlign: 'center' }}>
         {/* <Stack.Screen name="Contacts" component={Contacts} options={{ title: 'Contacts' }} /> */}
+        <Stack.Screen name="TodoApp" component={TodoApp} options={{ title: 'Todo App' }} />
         <Stack.Screen name="Calculator" component={Calculator} options={{ title: 'Calculator' }} />
         <Stack.Screen name="Home_lab2" component={ContactsNavigator} options={{headerShown: false}} />
         <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ title: 'Login' }} />

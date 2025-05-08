@@ -1,7 +1,7 @@
 // Import các chức năng cần dùng
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getDatabase } from "firebase/database"; // Realtime Database
+import { getDatabase } from "firebase/database";
 
 // Cấu hình Firebase
 const firebaseConfig = {
@@ -11,7 +11,7 @@ const firebaseConfig = {
   storageBucket: "thuchanhdnt.firebasestorage.app",
   messagingSenderId: "476026534176",
   appId: "1:476026534176:web:f05a9911abaa2dd0bfff45",
-  databaseURL: "https://thuchanhdnt-default-rtdb.firebaseio.com" // thêm dòng này
+  databaseURL: "https://thuchanhdnt-default-rtdb.firebaseio.com"
 };
 
 // Khởi tạo Firebase
@@ -19,4 +19,4 @@ const app = initializeApp(firebaseConfig);
 
 // Khởi tạo Auth và Database
 export const auth = getAuth(app);
-export const database = getDatabase(app);
+export const db = getDatabase(app);

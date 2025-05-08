@@ -41,14 +41,18 @@ export default function Calculator() {
     }
 
     setResult(calculationResult.toString());
-    setLastNumber("");
+    setLastNumber(calculationResult.toString());
     setCurrentNumber("");
     setOperation("");
-    setDisplayFormula("");
+    setDisplayFormula(calculationResult.toString());
   };
 
   // Xử lý khi nhấn nút số
   const handleNumberPress = (buttonValue) => {
+    if (result !== "") {
+      setResult("");
+      setDisplayFormula("");
+    }
     setCurrentNumber(currentNumber + buttonValue);
   };
 
