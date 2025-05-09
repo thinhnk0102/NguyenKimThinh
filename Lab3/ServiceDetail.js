@@ -1,12 +1,22 @@
 import React, { useEffect, useState, useLayoutEffect } from "react";
-import { View, Text, StyleSheet, Alert, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+} from "react-native";
 import { getDatabase, ref, onValue, remove } from "firebase/database";
 import { useNavigation } from "@react-navigation/native";
-import { MaterialIcons } from '@expo/vector-icons';
+import Icon from "react-native-vector-icons/MaterialIcons";
+import { auth } from "../firebaseConfig";
 
 const ServiceDetail = ({ route }) => {
   const { serviceId } = route.params;
   const [service, setService] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -15,139 +25,227 @@ const ServiceDetail = ({ route }) => {
     const unsubscribe = onValue(serviceRef, (snapshot) => {
       setService(snapshot.val());
     });
+
+    // Kiểm tra quyền admin
+    const user = auth.currentUser;
+    if (user) {
+      const userRef = ref(db, `users/${user.uid}`);
+      const unsubscribeUser = onValue(userRef, (snapshot) => {
+        const userData = snapshot.val();
+        if (userData) {
+          setIsAdmin(userData.role === 'admin');
+        }
+      });
+      return () => {
+        unsubscribe();
+        unsubscribeUser();
+      };
+    }
+
     return () => unsubscribe();
   }, [serviceId]);
 
-  // Menu handler
   const handleMenu = () => {
     Alert.alert(
-      'Tùy chọn',
-      '',
+      "Tùy chọn",
+      "",
       [
         {
-          text: 'Edit',
-          onPress: () => navigation.navigate('EditService', { serviceId })
+          text: "Chỉnh sửa",
+          onPress: () => navigation.navigate("EditService", { serviceId }),
         },
         {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: handleDelete
+          text: "Xóa",
+          style: "destructive",
+          onPress: handleDelete,
         },
         {
-          text: 'Cancel',
-          style: 'cancel'
-        }
+          text: "Hủy",
+          style: "cancel",
+        },
       ]
     );
   };
 
   const handleDelete = async () => {
     Alert.alert(
-      "Warning",
-      "Are you sure you want to remove this service? This operation cannot be returned",
+      "Cảnh báo",
+      "Bạn có chắc chắn muốn xóa dịch vụ này? Hành động này không thể hoàn tác",
       [
         {
-          text: "CANCEL",
-          style: "cancel"
+          text: "HỦY",
+          style: "cancel",
         },
         {
-          text: "DELETE",
+          text: "XÓA",
           style: "destructive",
           onPress: async () => {
             try {
               const db = getDatabase();
               const serviceRef = ref(db, `services/${serviceId}`);
               await remove(serviceRef);
-              Alert.alert("Success", "Service deleted!");
+              Alert.alert("Thành công", "Đã xóa dịch vụ!");
               navigation.goBack();
             } catch (error) {
-              Alert.alert("Error", error.message);
+              Alert.alert("Lỗi", error.message);
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerRight: () => (
+      headerRight: () => isAdmin ? (
         <TouchableOpacity onPress={handleMenu} style={{ marginRight: 15 }}>
-          <MaterialIcons name="more-vert" size={24} color="#000" />
+          <Icon name="more-vert" size={24} color="#fff" />
         </TouchableOpacity>
-      ),
+      ) : null,
       headerStyle: {
-        backgroundColor: '#f06292',
+        backgroundColor: "#e57373",
       },
-      headerTintColor: '#fff',
+      headerTintColor: "#fff",
       headerTitleStyle: {
-        fontWeight: 'bold',
+        fontWeight: "bold",
       },
     });
-  }, [navigation, service]);
+  }, [navigation, service, isAdmin]);
 
-  if (!service) return <Text>Loading...</Text>;
+  if (!service) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Đang tải...</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.bg}>
-      <View style={styles.card}>
+    <ScrollView style={styles.container}>
+      {service.imageUrl ? (
+        <Image source={{ uri: service.imageUrl }} style={styles.image} />
+      ) : (
+        <View style={styles.imagePlaceholder}>
+          <Icon name="spa" size={60} color="#e57373" />
+        </View>
+      )}
+
+      <View style={styles.content}>
         <Text style={styles.title}>{service.serviceName}</Text>
-        <View style={styles.row}><Text style={styles.label}>Price:</Text><Text style={styles.value}>{service.price?.toLocaleString()} đ</Text></View>
-        <View style={styles.row}><Text style={styles.label}>Creator:</Text><Text style={styles.value}>{service.creator || "N/A"}</Text></View>
-        <View style={styles.row}><Text style={styles.label}>Time:</Text><Text style={styles.value}>{service.time || "N/A"}</Text></View>
-        <View style={styles.row}><Text style={styles.label}>Final update:</Text><Text style={styles.value}>{service.finalUpdate || "N/A"}</Text></View>
+        
+        <View style={styles.priceContainer}>
+          <Text style={styles.price}>{service.price?.toLocaleString()} đ</Text>
+        </View>
+
+        {service.description && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Mô tả</Text>
+            <Text style={styles.description}>{service.description}</Text>
+          </View>
+        )}
+
+        {isAdmin && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Thông tin chi tiết</Text>
+            <View style={styles.infoRow}>
+              <Icon name="person" size={20} color="#e57373" style={styles.infoIcon} />
+              <Text style={styles.infoLabel}>Người tạo:</Text>
+              <Text style={styles.infoValue}>{service.creator || "N/A"}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Icon name="access-time" size={20} color="#e57373" style={styles.infoIcon} />
+              <Text style={styles.infoLabel}>Thời gian tạo:</Text>
+              <Text style={styles.infoValue}>{service.time || "N/A"}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Icon name="update" size={20} color="#e57373" style={styles.infoIcon} />
+              <Text style={styles.infoLabel}>Cập nhật lần cuối:</Text>
+              <Text style={styles.infoValue}>{service.finalUpdate || "N/A"}</Text>
+            </View>
+          </View>
+        )}
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  bg: {
+  container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
-    justifyContent: 'start',
-    alignItems: 'center',
+    backgroundColor: "#fff",
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 28,
-    margin: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.13,
-    shadowRadius: 8,
-    elevation: 6,
-    minWidth: 320,
-    maxWidth: 400,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  image: {
+    width: "100%",
+    height: 250,
+    resizeMode: "cover",
+  },
+  imagePlaceholder: {
+    width: "100%",
+    height: 250,
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  content: {
+    padding: 20,
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#e57373',
-    marginBottom: 22,
-    alignSelf: 'center',
-    letterSpacing: 1,
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 10,
   },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
+  priceContainer: {
+    backgroundColor: "#e57373",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 20,
   },
-  label: {
-    fontWeight: 'bold',
-    color: '#f06292',
+  price: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#fff",
+    textAlign: "center",
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 10,
+  },
+  description: {
     fontSize: 16,
-    minWidth: 110,
+    color: "#666",
+    lineHeight: 24,
   },
-  value: {
-    color: '#333',
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  infoIcon: {
+    marginRight: 10,
+  },
+  infoLabel: {
     fontSize: 16,
-    flexShrink: 1,
-    textAlign: 'right',
+    color: "#666",
+    marginRight: 10,
+    minWidth: 120,
   },
-  bold: { fontWeight: 'bold' },
+  infoValue: {
+    fontSize: 16,
+    color: "#333",
+    flex: 1,
+  },
 });
 
 export default ServiceDetail; 

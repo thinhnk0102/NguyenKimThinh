@@ -1,7 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ScrollView,
+  Image,
+} from "react-native";
 import { getDatabase, ref, onValue, update } from "firebase/database";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import Icon from "react-native-vector-icons/MaterialIcons";
+import * as ImagePicker from "expo-image-picker";
+import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from "../config/cloudinaryConfig";
 
 const EditService = () => {
   const navigation = useNavigation();
@@ -9,7 +21,10 @@ const EditService = () => {
   const { serviceId } = route.params;
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [description, setDescription] = useState("");
+  const [imageUri, setImageUri] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const db = getDatabase();
@@ -19,126 +34,266 @@ const EditService = () => {
       if (data) {
         setName(data.serviceName || "");
         setPrice(data.price ? data.price.toString() : "");
+        setDescription(data.description || "");
+        setImageUri(data.imageUrl || null);
       }
       setLoading(false);
     });
     return () => unsubscribe();
   }, [serviceId]);
 
+  const pickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Lỗi", "Cần quyền truy cập thư viện ảnh");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setImageUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert("Lỗi", "Không thể chọn ảnh");
+      console.error(error);
+    }
+  };
+
+  const uploadImage = async (uri) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", {
+        uri: uri,
+        type: "image/jpeg",
+        name: "service.jpg",
+      });
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      formData.append("cloud_name", CLOUDINARY_CLOUD_NAME);
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const data = await response.json();
+      if (data.secure_url) {
+        return data.secure_url;
+      } else {
+        throw new Error("Không thể upload ảnh lên Cloudinary");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      throw error;
+    }
+  };
+
   const handleUpdate = async () => {
     if (!name || !price) {
-      Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin");
+      Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin bắt buộc");
       return;
     }
+
     try {
+      setUploading(true);
+      let imageUrl = null;
+      if (imageUri && imageUri.startsWith('file://')) {
+        imageUrl = await uploadImage(imageUri);
+      } else if (imageUri) {
+        imageUrl = imageUri;
+      }
+
       const db = getDatabase();
       const serviceRef = ref(db, `services/${serviceId}`);
       await update(serviceRef, {
         serviceName: name,
         price: Number(price),
+        description: description,
+        imageUrl: imageUrl,
         finalUpdate: new Date().toLocaleString(),
       });
+
       Alert.alert("Thành công", "Đã cập nhật dịch vụ!");
       navigation.goBack();
     } catch (error) {
       Alert.alert("Lỗi", error.message);
+    } finally {
+      setUploading(false);
     }
   };
 
-  if (loading) return <Text>Loading...</Text>;
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Đang tải...</Text>
+      </View>
+    );
+  }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#f8f8f8' }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={styles.card}>
-        <Text style={styles.header}>Edit Service</Text>
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Service name *</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Service name"
-            placeholderTextColor="#aaa"
-          />
-        </View>
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Price *</Text>
-          <TextInput
-            style={styles.input}
-            value={price}
-            onChangeText={setPrice}
-            placeholder="0"
-            keyboardType="numeric"
-            placeholderTextColor="#aaa"
-          />
-        </View>
-        <TouchableOpacity style={styles.button} onPress={handleUpdate}>
-          <Text style={styles.buttonText}>Update</Text>
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Icon name="arrow-back" size={28} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Chỉnh sửa dịch vụ</Text>
+        <View style={{ width: 28 }} />
+      </View>
+
+      <View style={styles.content}>
+        <TouchableOpacity style={styles.imageContainer} onPress={pickImage}>
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.image} />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Icon name="add-a-photo" size={40} color="#e57373" />
+              <Text style={styles.imagePlaceholderText}>Thêm ảnh dịch vụ</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <Text style={styles.label}>Tên dịch vụ *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Nhập tên dịch vụ"
+          value={name}
+          onChangeText={setName}
+        />
+
+        <Text style={styles.label}>Giá *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="0"
+          value={price}
+          onChangeText={setPrice}
+          keyboardType="numeric"
+        />
+
+        <Text style={styles.label}>Mô tả</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          placeholder="Nhập mô tả dịch vụ"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={4}
+        />
+
+        <TouchableOpacity
+          style={[styles.button, uploading && styles.buttonDisabled]}
+          onPress={handleUpdate}
+          disabled={uploading}
+        >
+          <Text style={styles.buttonText}>
+            {uploading ? "Đang cập nhật..." : "Cập nhật dịch vụ"}
+          </Text>
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#fff',
-    margin: 20,
-    marginTop: 40,
-    borderRadius: 18,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
   },
   header: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#e57373',
-    marginBottom: 24,
-    alignSelf: 'center',
-    letterSpacing: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#e57373",
+    paddingTop: 40,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  formGroup: {
-    marginBottom: 18,
+  headerTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  content: {
+    padding: 20,
+  },
+  imageContainer: {
+    width: "100%",
+    height: 200,
+    marginBottom: 20,
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: "#f5f5f5",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  imagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#e57373",
+    borderStyle: "dashed",
+    borderRadius: 10,
+  },
+  imagePlaceholderText: {
+    marginTop: 10,
+    color: "#e57373",
+    fontSize: 16,
   },
   label: {
+    fontSize: 16,
     fontWeight: "bold",
-    marginBottom: 6,
-    color: '#333',
-    fontSize: 15,
+    color: "#333",
+    marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 10,
+    borderColor: "#ddd",
+    borderRadius: 8,
     padding: 12,
+    marginBottom: 16,
     fontSize: 16,
-    backgroundColor: '#fafafa',
-    color: '#222',
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: "top",
   },
   button: {
     backgroundColor: "#e57373",
-    paddingVertical: 16,
-    borderRadius: 10,
+    padding: 15,
+    borderRadius: 8,
     alignItems: "center",
-    marginTop: 10,
-    shadowColor: '#e57373',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
+    marginTop: 20,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     color: "#fff",
+    fontSize: 16,
     fontWeight: "bold",
-    fontSize: 17,
-    letterSpacing: 1,
   },
 });
 

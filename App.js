@@ -1,10 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getDatabase, ref, onValue } from 'firebase/database';
+import AuthRouter from './Lab3/routes/AuthRouter';
+import CustomerRouter from './Lab3/routes/CustomerRouter';
+import AdminRouter from './Lab3/routes/AdminRouter';
 
-// Import tất cả các project components (đảm bảo import đúng đường dẫn)
+// Import tất cả các project components
 import Project1 from '../ThucHanh/Lab1/Project1';
 import Project2 from '../ThucHanh/Lab1/Project2';
 import Project3 from '../ThucHanh/Lab1/Project3';
@@ -20,9 +25,11 @@ import HomeLab3 from "./Lab3/HomeLab3";
 import AddService from "./Lab3/AddService";
 import ServiceDetail from "./Lab3/ServiceDetail";
 import EditService from "./Lab3/EditService";
-const Stack = createNativeStackNavigator();
+import ProfileScreen from "./Lab3/ProfileScreen";
 import Calculator from "./Lab1/Caculator";
 import TodoApp from "./Lab5/TodoApp";
+
+const Stack = createNativeStackNavigator();
 
 // Danh sách project với tên, component và màu sắc tương ứng
 const projects = [
@@ -48,9 +55,8 @@ const HomeScreen = ({ navigation }) => {
         contentContainerStyle={styles.grid}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={[styles.projectBox, { backgroundColor: item.color }]} // Áp dụng màu cho từng dự án
+            style={[styles.projectBox, { backgroundColor: item.color }]}
             onPress={() => {
-              // Điều hướng đến màn hình của project tương ứng
               navigation.navigate(item.component);
             }}
           >
@@ -64,20 +70,73 @@ const HomeScreen = ({ navigation }) => {
 };
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const db = getDatabase();
+
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        // Kiểm tra role của user
+        const userRef = ref(db, `users/${currentUser.uid}`);
+        const unsubscribeRole = onValue(userRef, (snapshot) => {
+          const userData = snapshot.val();
+          if (userData) {
+            setUserRole(userData.role);
+          } else {
+            setUserRole(null);
+          }
+          setLoading(false);
+        });
+        return () => unsubscribeRole();
+      } else {
+        setUser(null);
+        setUserRole(null);
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return null;
+  }
+
   return (
     <NavigationContainer>
-      <Stack.Navigator  initialRouteName="TodoApp" screenOptions={{ headerTitleAlign: 'center' }}>
-        {/* <Stack.Screen name="Contacts" component={Contacts} options={{ title: 'Contacts' }} /> */}
+      <Stack.Navigator initialRouteName="LoginScreen" screenOptions={{ headerTitleAlign: 'center' }}>
+        {!user ? (
+          // Auth Stack
+          <>
+            <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
+          </>
+        ) : userRole === 'admin' ? (
+          // Admin Stack
+          <>
+            <Stack.Screen name="HomeLab3" component={HomeLab3} options={{ headerShown: false }} />
+            <Stack.Screen name="AddService" component={AddService} options={{ title: "Service" }} />
+            <Stack.Screen name="ServiceDetail" component={ServiceDetail} options={{ title: "Service detail" }} />
+            <Stack.Screen name="EditService" component={EditService} options={{ title: "Service", headerShown: false }} />
+            <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+          </>
+        ) : (
+          // Customer Stack
+          <>
+            <Stack.Screen name="HomeLab3" component={HomeLab3} options={{ headerShown: false }} />
+            <Stack.Screen name="ServiceDetail" component={ServiceDetail} options={{ title: "Service detail" }} />
+            <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+          </>
+        )}
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Trang Chủ' }} />
         <Stack.Screen name="TodoApp" component={TodoApp} options={{ title: 'Todo App' }} />
         <Stack.Screen name="Calculator" component={Calculator} options={{ title: 'Calculator' }} />
         <Stack.Screen name="Home_lab2" component={ContactsNavigator} options={{headerShown: false}} />
-        <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ title: 'Login' }} />
-        <Stack.Screen name="Register"component={RegisterScreen} options={{ title: "Register" }}/>
-        <Stack.Screen name="HomeLab3" component={HomeLab3} options={{headerShown: false}}  />
-        <Stack.Screen name="AddService" component={AddService} options={{ title: "Service" }} />
-        <Stack.Screen name="ServiceDetail" component={ServiceDetail} options={{ title: "Service detail" }} />
-        <Stack.Screen name="EditService" component={EditService} options={{ title: "Service" }} />
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Trang Chủ' }} />
         <Stack.Screen name="Project1" component={Project1} options={{ title: 'Hello, Word!' }} />
         <Stack.Screen name="Project2" component={Project2} options={{ title: 'Capturing Taps' }} />
         <Stack.Screen name="Project3" component={Project3} options={{ title: 'Project 3' }} />
