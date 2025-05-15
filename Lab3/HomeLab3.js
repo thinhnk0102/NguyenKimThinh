@@ -10,6 +10,7 @@ import {
   StatusBar,
   ScrollView,
   Alert,
+  Platform,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useNavigation } from "@react-navigation/native";
@@ -258,15 +259,24 @@ const SpaServicesScreen = () => {
 
       {/* Bottom Tab */}
       <View style={styles.tabBar}>
-        <TouchableOpacity style={styles.tabItem}>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => navigation.navigate('HomeLab3')}
+        >
           <Icon name="home" size={28} color="#e57373" />
           <Text style={styles.tabLabelActive}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
-          <Icon name="attach-money" size={28} color="#888" />
-          <Text style={styles.tabLabel}>Transaction</Text>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => navigation.navigate(isAdmin ? 'AdminRegistrations' : 'RegisteredServices')}
+        >
+          <Icon name="event-note" size={28} color="#888" />
+          <Text style={styles.tabLabel}>Đăng ký</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => navigation.navigate('Profile')}
+        >
           <Icon name="people" size={28} color="#888" />
           <Text style={styles.tabLabel}>Customer</Text>
         </TouchableOpacity>
@@ -522,29 +532,27 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   tabBar: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    height: 60,
-    backgroundColor: "#fff",
+    flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: "#eee",
+    borderTopColor: '#eee',
+    backgroundColor: '#fff',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
   },
   tabItem: {
-    alignItems: "center",
-    justifyContent: "center",
     flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
   },
   tabLabel: {
     fontSize: 12,
-    color: "#888",
+    color: '#888',
     marginTop: 4,
   },
   tabLabelActive: {
     fontSize: 12,
-    color: "#e57373",
+    color: '#e57373',
     marginTop: 4,
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
   addButton: {
     marginLeft: 10,

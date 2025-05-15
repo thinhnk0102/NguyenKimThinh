@@ -7,9 +7,10 @@ import {
   StyleSheet,
   Alert,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { auth, db } from "../firebaseConfig";
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from "firebase/auth";
 import { ref, get } from "firebase/database";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
@@ -18,85 +19,122 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ email và mật khẩu');
+      return;
+    }
+
     try {
-      if (!email || !password) {
-        Alert.alert("Lỗi", "Vui lòng nhập đầy đủ email và mật khẩu");
-        return;
-      }
-
       setLoading(true);
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-      // Kiểm tra role của user
-      const userRef = ref(db, `users/${userCredential.user.uid}`);
+      // Kiểm tra role của user trong database
+      const userRef = ref(db, `users/${user.uid}`);
       const snapshot = await get(userRef);
       const userData = snapshot.val();
 
       if (!userData) {
-        Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng");
+        Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng');
+        await signOut(auth);
         return;
       }
 
-      Alert.alert("Thành công", "Đăng nhập thành công!");
-      console.log("User logged in successfully!", userCredential.user);
-      
-      // Điều hướng đến HomeLab3
-      navigation.replace('HomeLab3');
+      if (userData.role === 'admin') {
+        Alert.alert('Thành công', 'Đăng nhập thành công với quyền admin');
+        navigation.navigate('HomeLab3');
+      } else if (userData.role === 'customer') {
+        Alert.alert('Thành công', 'Đăng nhập thành công');
+        navigation.navigate('HomeLab3');
+      } else {
+        Alert.alert('Lỗi', 'Tài khoản không có quyền truy cập');
+        await signOut(auth);
+      }
     } catch (error) {
-      let errorMessage = "Đã xảy ra lỗi khi đăng nhập";
+      console.error('Login error:', error);
+      let errorMessage = 'Đăng nhập thất bại. Vui lòng thử lại sau.';
       
       switch (error.code) {
-        case "auth/invalid-email":
-          errorMessage = "Email không hợp lệ";
+        case 'auth/invalid-email':
+          errorMessage = 'Email không hợp lệ';
           break;
-        case "auth/user-disabled":
-          errorMessage = "Tài khoản đã bị vô hiệu hóa";
+        case 'auth/user-disabled':
+          errorMessage = 'Tài khoản đã bị vô hiệu hóa';
           break;
-        case "auth/user-not-found":
-          errorMessage = "Không tìm thấy tài khoản";
+        case 'auth/user-not-found':
+          errorMessage = 'Không tìm thấy tài khoản';
           break;
-        case "auth/wrong-password":
-          errorMessage = "Mật khẩu không chính xác";
+        case 'auth/wrong-password':
+          errorMessage = 'Mật khẩu không đúng';
           break;
-        default:
-          errorMessage = error.message;
+        case 'auth/too-many-requests':
+          errorMessage = 'Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau';
+          break;
       }
       
-      Alert.alert("Lỗi", errorMessage);
-      console.error(error);
+      Alert.alert('Lỗi', errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const handleForgotPassword = async () => {
-    if (!email) {
+    if (!resetEmail) {
       Alert.alert("Lỗi", "Vui lòng nhập email của bạn");
       return;
     }
 
     try {
       setLoading(true);
-      await sendPasswordResetEmail(auth, email);
+      
+      // Kiểm tra email có tồn tại trong database không
+      const usersRef = ref(db, 'users');
+      const snapshot = await get(usersRef);
+      const users = snapshot.val();
+      
+      let emailExists = false;
+      if (users) {
+        // Tìm kiếm email trong danh sách users
+        Object.values(users).forEach(user => {
+          if (user.email === resetEmail) {
+            emailExists = true;
+          }
+        });
+      }
+
+      if (!emailExists) {
+        Alert.alert("Lỗi", "Email chưa được đăng ký trong hệ thống");
+        return;
+      }
+
+      // Nếu email tồn tại, gửi link đặt lại mật khẩu
+      await sendPasswordResetEmail(auth, resetEmail);
       Alert.alert(
         "Thành công",
-        "Email khôi phục mật khẩu đã được gửi. Vui lòng kiểm tra hộp thư của bạn."
+        "Link thay đổi mật khẩu đã được gửi đến email của bạn. Vui lòng kiểm tra email và làm theo hướng dẫn.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setShowForgotPassword(false);
+              setResetEmail("");
+            }
+          }
+        ]
       );
     } catch (error) {
-      let errorMessage = "Không thể gửi email khôi phục mật khẩu";
+      let errorMessage = "Không thể gửi email đặt lại mật khẩu";
       
       switch (error.code) {
         case "auth/invalid-email":
           errorMessage = "Email không hợp lệ";
           break;
         case "auth/user-not-found":
-          errorMessage = "Không tìm thấy tài khoản với email này";
+          errorMessage = "Email chưa được đăng ký";
           break;
         default:
           errorMessage = error.message;
@@ -156,7 +194,10 @@ const LoginScreen = ({ navigation }) => {
 
       <TouchableOpacity
         style={styles.forgotPassword}
-        onPress={handleForgotPassword}
+        onPress={() => {
+          setShowForgotPassword(true);
+          setResetEmail("");
+        }}
       >
         <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
       </TouchableOpacity>
@@ -166,9 +207,11 @@ const LoginScreen = ({ navigation }) => {
         onPress={handleLogin}
         disabled={loading}
       >
-        <Text style={styles.buttonText}>
-          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
-        </Text>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Đăng nhập</Text>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -177,6 +220,48 @@ const LoginScreen = ({ navigation }) => {
       >
         <Text style={styles.linkText}>Chưa có tài khoản? Đăng ký</Text>
       </TouchableOpacity>
+
+      {showForgotPassword && (
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Quên mật khẩu</Text>
+            
+            <View style={styles.inputContainer}>
+              <Icon name="email" size={24} color="#666" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Nhập email đã đăng ký"
+                value={resetEmail}
+                onChangeText={setResetEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={handleForgotPassword}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.sendButtonText}>Gửi link đặt lại mật khẩu</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                setShowForgotPassword(false);
+                setResetEmail("");
+              }}
+            >
+              <Text style={styles.closeButtonText}>Đóng</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -256,6 +341,52 @@ const styles = StyleSheet.create({
   linkText: {
     color: "#e57373",
     fontSize: 14,
+  },
+  modalContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 10,
+    width: "90%",
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  sendButton: {
+    backgroundColor: "#4CAF50",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  sendButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  closeButton: {
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  closeButtonText: {
+    color: "#666",
+    fontSize: 16,
   },
 });
 

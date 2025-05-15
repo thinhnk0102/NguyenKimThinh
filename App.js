@@ -28,6 +28,10 @@ import EditService from "./Lab3/EditService";
 import ProfileScreen from "./Lab3/ProfileScreen";
 import Calculator from "./Lab1/Caculator";
 import TodoApp from "./Lab5/TodoApp";
+import ResetPassword from "./Lab3/ResetPassword";
+import RegisteredServices from './Lab3/RegisteredServices';
+import RegistrationDetail from './Lab3/RegistrationDetail';
+import AdminRegistrations from './Lab3/AdminRegistrations';
 
 const Stack = createNativeStackNavigator();
 
@@ -115,15 +119,18 @@ export default function App() {
           <>
             <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="ResetPassword" component={ResetPassword} options={{ headerShown: false }} />
           </>
         ) : userRole === 'admin' ? (
           // Admin Stack
           <>
             <Stack.Screen name="HomeLab3" component={HomeLab3} options={{ headerShown: false }} />
-            <Stack.Screen name="AddService" component={AddService} options={{ title: "Service" }} />
+            <Stack.Screen name="AddService" component={AddService} options={{ title: "Service",headerShown: false }} />
             <Stack.Screen name="ServiceDetail" component={ServiceDetail} options={{ title: "Service detail" }} />
             <Stack.Screen name="EditService" component={EditService} options={{ title: "Service", headerShown: false }} />
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AdminRegistrations" component={AdminRegistrations} options={{ headerShown: false }} />
+            <Stack.Screen name="RegistrationDetail" component={RegistrationDetail} options={{ headerShown: false }} />
           </>
         ) : (
           // Customer Stack
@@ -131,6 +138,8 @@ export default function App() {
             <Stack.Screen name="HomeLab3" component={HomeLab3} options={{ headerShown: false }} />
             <Stack.Screen name="ServiceDetail" component={ServiceDetail} options={{ title: "Service detail" }} />
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="RegisteredServices" component={RegisteredServices} options={{ headerShown: false }} />
+            <Stack.Screen name="RegistrationDetail" component={RegistrationDetail} options={{ headerShown: false }} />
           </>
         )}
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Trang Chủ' }} />
